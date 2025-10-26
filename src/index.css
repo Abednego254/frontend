@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+body{
+   margin: 0;
+   padding: 0;
+}
+
+
+
+/* css -> id, className, html element */
