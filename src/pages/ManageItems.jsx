@@ -41,7 +41,7 @@ function ManageItems() {
           </button>
 
           <button
-            onClick={() => navigate("/seller/sell-item")}
+            onClick={() => navigate("/sell-item")}
             className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg transition duration-200"
           >
             💰 Sell an Item

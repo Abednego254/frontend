@@ -11,6 +11,7 @@ import ManageItems from "./pages/ManageItems";
 import ViewSales from "./pages/ViewSales";
 import AddItems from "./pages/AddItems";
 import ViewItems from "./pages/ViewItems";
+import SellItems from "./pages/SellItems";
 
 function App() {
   return (
@@ -74,6 +75,14 @@ function App() {
               </ProtectedRoute>
             }
         />
+          <Route
+              path="/sell-item"
+              element={
+                  <ProtectedRoute>
+                      <SellItems />
+                  </ProtectedRoute>
+              }
+          />
         <Route path="/logout" element={<Logout />} />
         {/* Other routes like login will go here */}
       </Routes>
