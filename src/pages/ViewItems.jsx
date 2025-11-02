@@ -1,7 +1,6 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import api from "../api/axios";
-import { useNavigate} from "react-router-dom";
-import { toast, Toaster} from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 
 function ViewItems() {
     const [loading, setLoading] = useState(true);
@@ -9,20 +8,21 @@ function ViewItems() {
 
     useEffect(() => {
         const fetchItems = async () => {
-            try{
+            try {
                 const response = await api.get("/items/");
                 setItems(response.data || []);
-            }catch(err){
+            } catch (err) {
                 console.error("Error getting items.", err.response);
                 const errorMessage =
                     err.response?.data?.error ||
                     err.response?.data?.message ||
                     "Failed to fetch items.";
                 toast.error(errorMessage, { duration: 5000 });
-            }finally {
+            } finally {
                 setLoading(false);
             }
         };
+
         fetchItems();
     }, []);
 
@@ -67,8 +67,9 @@ function ViewItems() {
                         >
                             <img
                                 src={
-                                    item.imageUrl ||
-                                    "https://via.placeholder.com/300x200.png?text=No+Image"
+                                    item.photo
+                                        ? `http://localhost:5000${item.photo}`
+                                        : "https://via.placeholder.com/300x200.png?text=No+Image"
                                 }
                                 alt={item.name}
                                 className="w-full h-48 object-cover"
@@ -82,10 +83,7 @@ function ViewItems() {
                                     KSh {item.price.toLocaleString()}
                                 </p>
                                 <p className="text-gray-500 text-sm">
-                                    Category: <span className="font-medium">{item.category}</span>
-                                </p>
-                                <p className="text-gray-500 text-sm">
-                                    Quantity: <span className="font-medium">{item.quantity}</span>
+                                    Stock: <span className="font-medium">{item.stock || 0}</span>
                                 </p>
                             </div>
                         </div>

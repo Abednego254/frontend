@@ -10,28 +10,65 @@ function SellItems() {
     const [loading, setLoading] = useState(false);
     const [userId, setUserId] = useState(null);
 
-    // Fetch available items and logged-in user
+    // ✅ Connect to Socket.IO backend
     useEffect(() => {
-        const fetchItems = async () => {
-            try {
-                const response = await api.get("/items/");
-                setItems(response.data || []);
-            } catch (err) {
-                console.error("Error fetching items:", err.response);
-                const message =
-                    err.response?.data?.error ||
-                    err.response?.data?.message ||
-                    "Failed to fetch available items.";
-                toast.error(message);
-            }
-        };
+        const socket = io("http://127.0.0.1:5000"); // or your ngrok/production URL
 
+        socket.on("connect", () => {
+            console.log("✅ Connected to server via Socket.IO");
+        });
+
+        // 🔥 Listen for real-time payment updates
+        socket.on("payment_update", (data) => {
+            console.log("📡 Payment update received:", data);
+
+            // Display success or error message that lasts 60 seconds
+            if (data.status === "success") {
+                toast.success(data.message || "Payment successful!", { duration: 60000 });
+            } else if (data.status === "failed_insufficient_funds") {
+                toast.error(data.message || "Insufficient funds.", { duration: 60000 });
+            } else if (data.status === "cancelled") {
+                toast.error(data.message || "Payment cancelled.", { duration: 60000 });
+            } else {
+                toast(data.message || "Payment update received!", { duration: 60000 });
+            }
+
+            // Optionally refresh items after update
+            fetchItems();
+        });
+
+        socket.on("disconnect", () => {
+            console.log("⚠️ Disconnected from server");
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+
+    // ✅ Fetch available items
+    const fetchItems = async () => {
+        try {
+            const response = await api.get("/items/");
+            setItems(response.data || []);
+        } catch (err) {
+            console.error("Error fetching items:", err.response);
+            const message =
+                err.response?.data?.error ||
+                err.response?.data?.message ||
+                "Failed to fetch available items.";
+            toast.error(message, { duration: 60000 });
+        }
+    };
+
+    // ✅ Load items & user data on mount
+    useEffect(() => {
         const user = JSON.parse(localStorage.getItem("user"));
         if (user) setUserId(user.id);
         fetchItems();
     }, []);
 
-    // Add item to sale list
+    // ✅ Add item to sale list
     const handleAddItem = (item) => {
         const existing = selectedItems.find((i) => i.id === item.id);
         if (existing) {
@@ -45,7 +82,7 @@ function SellItems() {
         }
     };
 
-    // Remove or reduce quantity
+    // ✅ Remove item
     const handleRemoveItem = (itemId) => {
         setSelectedItems((prev) =>
             prev
@@ -56,33 +93,37 @@ function SellItems() {
         );
     };
 
-    // Calculate total
+    // ✅ Calculate total
     const total = selectedItems.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
     );
 
-    // Request payment
+    // ✅ Request payment
     const handleRequestPayment = async () => {
         if (selectedItems.length === 0) {
-            toast.error("Please select at least one item before requesting payment.");
+            toast.error("Please select at least one item.", { duration: 60000 });
             return;
         }
 
         if (!clientPhone.trim()) {
-            toast.error("Please enter the client's phone number (e.g. 2547XXXXXXXX).");
+            toast.error("Enter the client's phone number (e.g. 2547XXXXXXXX).", {
+                duration: 60000,
+            });
             return;
         }
 
         if (!userId) {
-            toast.error("User session expired. Please log in again.");
+            toast.error("User session expired. Please log in again.", {
+                duration: 60000,
+            });
             return;
         }
 
         try {
             setLoading(true);
 
-            // Step 1: Create Invoice
+            // Create invoice
             const invoiceResponse = await api.post("/invoices/", {
                 user_id: userId,
                 items: selectedItems.map((item) => ({
@@ -93,7 +134,7 @@ function SellItems() {
 
             const invoiceId = invoiceResponse.data.id;
 
-            // Step 2: Trigger STK Push
+            // Trigger STK Push
             const mpesaResponse = await api.post("/mpesa/stkpush", {
                 invoice_id: invoiceId,
                 phone_number: clientPhone,
@@ -103,31 +144,9 @@ function SellItems() {
 
             toast.success(
                 CustomerMessage ||
-                "Payment request sent! Ask the client to check their phone."
+                "Payment request sent! Ask the client to check their phone.",
+                { duration: 60000 }
             );
-
-            // Optional: Poll the backend after some delay to check payment status
-            setTimeout(async () => {
-                try {
-                    const checkResponse = await api.get(`/invoices/${invoiceId}`);
-                    const status = checkResponse.data.status;
-
-                    if (status === "paid") {
-                        toast.success("✅ Payment successful! Invoice marked as paid.");
-                    } else if (status === "cancelled") {
-                        toast.error("❌ Payment cancelled by client.");
-                    } else if (status === "failed" || status === "insufficient_funds") {
-                        toast.error("⚠️ Payment failed due to insufficient funds.");
-                    } else {
-                        toast("⌛ Waiting for client to complete payment...", {
-                            icon: "⏳",
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error checking payment status:", error);
-                    toast.error("Unable to verify payment status. Try again later.");
-                }
-            }, 10000); // Check after 10 seconds
 
             setSelectedItems([]);
             setClientPhone("");
@@ -137,7 +156,7 @@ function SellItems() {
                 err.response?.data?.error ||
                 err.response?.data?.message ||
                 "Failed to process payment request.";
-            toast.error(msg);
+            toast.error(msg, { duration: 60000 });
         } finally {
             setLoading(false);
         }

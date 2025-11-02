@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import api from "../api/axios"; // uses the configured axios instance
+import api from "../api/axios"; // axios instance configured with baseURL and auth token
 import { useNavigate } from "react-router-dom";
 
 function AddItems() {
@@ -8,37 +8,61 @@ function AddItems() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [stock, setStock] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Handle photo selection and preview
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!itemName || !price || !stock) {
-      toast.error("Please fill in all the required fields.");
+    if (!itemName || !price || !stock || !photo) {
+      toast.error("Please fill all required fields and select a photo.");
       return;
     }
 
     setLoading(true);
+
     try {
-      // POST request — token handled automatically by axios.js
-      const response = await api.post("/items/", {
+      // Step 1: Upload the photo to backend
+      const formData = new FormData();
+      formData.append("photo", photo);
+
+      const photoResponse = await api.post("/photo/upload-photo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const photoPath = photoResponse.data.file_path; // saved path from backend
+
+      // Step 2: Submit item data including photo path
+      await api.post("/items/", {
         name: itemName,
         price,
         description,
         stock,
+        photo: photoPath, // optional, just for frontend reference
       });
 
       setLoading(false);
-      toast.success("Item added successfully! Redirecting ....", { duration: 5000 });
+      toast.success("Item added successfully! Redirecting...", { duration: 4000 });
 
       // Clear fields
       setItemName("");
       setPrice("");
       setDescription("");
       setStock("");
+      setPhoto(null);
+      setPhotoPreview(null);
 
-      // Optional redirect after 2 sec
       setTimeout(() => navigate("/view-item"), 2000);
     } catch (err) {
       setLoading(false);
@@ -79,22 +103,36 @@ function AddItems() {
           />
 
           <textarea
-              type="text"
-              placeholder="Describr the item."
+              placeholder="Describe the item."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full p-2 mb-6 border rounded focus:outline-none focus:ring focus:ring-blue-300"
-              required
           />
 
           <input
               type="number"
-              placeholder="Number of the items to add."
+              placeholder="Number of items to add"
               value={stock}
               onChange={(e) => setStock(e.target.value)}
               className="w-full p-2 mb-6 border rounded focus:outline-none focus:ring focus:ring-blue-300"
               required
           />
+
+          {/* Photo Upload */}
+          <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="w-full mb-4"
+              required
+          />
+          {photoPreview && (
+              <img
+                  src={photoPreview}
+                  alt="Preview"
+                  className="w-full h-48 object-cover mb-6 rounded"
+              />
+          )}
 
           <button
               type="submit"
@@ -105,33 +143,7 @@ function AddItems() {
                       : "bg-blue-500 hover:bg-blue-600"
               }`}
           >
-            {loading ? (
-                <div className="flex justify-center items-center">
-                  <svg
-                      className="animate-spin h-5 w-5 mr-2 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                  >
-                    <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                    ></circle>
-                    <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                    ></path>
-                  </svg>
-                  Adding...
-                </div>
-            ) : (
-                "Add Item"
-            )}
+            {loading ? "Adding..." : "Add Item"}
           </button>
         </form>
       </div>
