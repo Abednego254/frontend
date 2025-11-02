@@ -187,7 +187,7 @@ function SellItems() {
                             >
                                 <img
                                     src={
-                                        item.imageUrl ||
+                                        item.photo ||
                                         "https://via.placeholder.com/300x200.png?text=No+Image"
                                     }
                                     alt={item.name}
